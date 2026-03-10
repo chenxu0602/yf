@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import numpy as np
 import pandas as pd
+import clickhouse_connect
+from clickhouse_connect.driver.client import Client as CH_Client
 
 
 def load_symbols(
@@ -20,6 +22,7 @@ def load_symbols(
 
     return sorted(res)
 
+FIELDS = ['Datetime', 'Symbol', 'Open', 'High', 'Low', 'Close', 'Volume']
 
 def load_yf(
     tickers: list[str],
@@ -40,7 +43,7 @@ def load_yf(
     res: dict[str, pd.DataFrame] = {}
 
     for inst in insts:
-        res[inst] = data[inst]
+        res[inst] = data[inst].dropna(how='all')
 
     return res
 
@@ -55,6 +58,82 @@ def load_yf_1h(
     tickers: list[str],
 ) -> dict[str, pd.DataFrame]:
     return load_yf(tickers, interval='1h', period='2y')
+
+
+def load_yr_1h_and_save(
+    tickers: list[str] = load_symbols(),
+    client: CH_Client = clickhouse_connect.get_client(host='localhost', username='admin', port=8123),
+) -> dict[str, pd.DataFrame]:
+
+    data = load_yf_1h(tickers)
+    for ticker in tickers:
+        try:
+            df = data[ticker]
+        except Exception as e:
+            print(f"Error loading data for {ticker}: {e}")
+            continue
+        else:
+            if df.empty:
+                print(f"No data for {ticker}")
+                continue
+            sym= ticker.split('=')[0]
+            if not '=' in ticker:
+                sym = ticker.split('-')[0]
+            df['Symbol'] = sym
+
+        print(f'Saving data for {ticker} to ClickHouse ...')
+        print(df.tail(10))
+        try:
+            client.insert_df('yfinance.yfinance_1h', df.reset_index()[FIELDS])
+        except Exception as e:
+            print(f"Error saving data for {ticker}: {e}")
+        else:
+            print(f"Data for {ticker} saved successfully.")
+
+    return data
+
+
+def load_yr_5m_and_save(
+    tickers: list[str] = load_symbols(),
+    client: CH_Client = clickhouse_connect.get_client(host='localhost', username='admin', port=8123),
+) -> dict[str, pd.DataFrame]:
+
+    data = load_yf_5m(tickers)
+    for ticker in tickers:
+        try:
+            df = data[ticker]
+        except Exception as e:
+            print(f"Error loading data for {ticker}: {e}")
+            continue
+        else:
+            if df.empty:
+                print(f"No data for {ticker}")
+                continue
+            sym= ticker.split('=')[0]
+            if not '=' in ticker:
+                sym = ticker.split('-')[0]
+            df['Symbol'] = sym
+
+        print(f'Saving data for {ticker} to ClickHouse...')
+        try:
+            client.insert_df('yfinance.yfinance_5m', df.reset_index()[FIELDS])
+        except Exception as e:
+            print(f"Error saving data for {ticker}: {e}")
+        else:
+            print(f"Data for {ticker} saved successfully.")
+
+    return data
+
+
+
+
+
+
+
+
+
+
+
 
 
 
