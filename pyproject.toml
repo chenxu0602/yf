@@ -1,0 +1,16 @@
+[project]
+name = "yf"
+version = "0.1.0"
+description = "YFinance Data"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.4.3",
+    "pandas>=3.0.1",
+    "yfinance>=1.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipython>=9.11.0",
+]
