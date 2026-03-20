@@ -60,6 +60,12 @@ def load_yf_1h(
     return load_yf(tickers, interval='1h', period='2y')
 
 
+def load_yf_1d(
+    tickers: list[str],
+) -> dict[str, pd.DataFrame]:
+    return load_yf(tickers, interval='1d', period='max')
+
+
 def load_yr_1h_and_save(
     tickers: list[str] = load_symbols(),
     client: CH_Client = clickhouse_connect.get_client(host='localhost', username='admin', port=8123),
